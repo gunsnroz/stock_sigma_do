@@ -27,22 +27,31 @@ def send_email(subject, body):
     s.quit()
     print("📧 Email send response", resp)
 
-def compute_table(df, title):
+def compute_table(df_map, title):
     rows = []
-    for t, sub in df.items():
-        price = float(sub["Close"].iloc[-1])
-        ma60  = float(sub["Close"].rolling(60).mean().iloc[-1])
-        ret   = sub["Close"].pct_change().dropna()
-        std60 = ret.rolling(60).std().iloc[-1] * 100
-        ann60 = std60 * math.sqrt(252)
-        p1    = ma60 * (1 - ann60/100)
-        p2    = ma60 * (1 - 2*ann60/100)
+    for t, sub in df_map.items():
+        # 종가 시리즈, 확실히 float으로 뽑아내기
+        closes = sub["Close"]
+        price = float(closes.iloc[-1])
+        ma60  = float(closes.rolling(60).mean().iloc[-1])
+
+        # 일별 수익률 σ% → 연환산 σ%
+        ret    = closes.pct_change().dropna()
+        std60  = float(ret.rolling(60).std().iloc[-1] * 100)
+        ann60  = float(std60 * math.sqrt(252))
+
+        # 1σ/2σ 매수가격 (float)
+        p1 = float(ma60 * (1 - ann60/100))
+        p2 = float(ma60 * (1 - 2*ann60/100))
+
+        # 신호 판단 (float vs float)
         if price < p2:
             sig = "매수(2σ 이하)"
         elif price < p1:
             sig = "매수(1σ 이하)"
         else:
             sig = "대기"
+
         rows.append({
             "Ticker": t,
             "현재가":  round(price,2),
@@ -52,35 +61,31 @@ def compute_table(df, title):
             "2σ가":   round(p2,2),
             "신호":   sig
         })
-    df_out = pd.DataFrame(rows)
-    return title, df_out
+    return title, pd.DataFrame(rows)
 
 if __name__=="__main__":
     tickers = ["SOXL","SCHD","JEPI","JEPQ","QQQ","SPLG","TMF","NVDA"]
 
-    # 1) 최근 365영업일(≈1년) 데이터
+    # 1) 최근 1년치
     df1 = {t: yf.download(t, period="365d", progress=False)[["Close"]].dropna() for t in tickers}
     title1, table1 = compute_table(df1, "===== 최근 1년치(365d) 기준 60D 연환산 σ 전략 =====")
 
     # 2) 전월 동기부터 1년
     today = dt.date.today()
     last_month = today - dt.timedelta(days=30)
-    start_ym  = last_month - dt.timedelta(days=365)
-    df2 = {}
-    for t in tickers:
-        df2[t] = yf.download(t, start=start_ym.isoformat(), end=last_month.isoformat(), progress=False)[["Close"]].dropna()
+    start_ym = last_month - dt.timedelta(days=365)
+    df2 = {t: yf.download(t, start=start_ym.isoformat(), end=last_month.isoformat(), progress=False)[["Close"]].dropna()
+           for t in tickers}
     title2, table2 = compute_table(df2, "===== 전월 동기부터 1년 기준 60D 연환산 σ 전략 =====")
 
-    # 터미널 출력
+    # 출력 & 전송
     print(title1); print(table1.to_string(index=False))
     print()
     print(title2); print(table2.to_string(index=False))
 
-    # 메시지 본문
     body = "\n".join([
         title1, table1.to_string(index=False),
         "", title2, table2.to_string(index=False)
     ])
-
     send_telegram(body)
     send_email("Sigma Buy Signals (1Y vs PrevMonth1Y, 60D σ)", body)
