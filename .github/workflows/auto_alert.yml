@@ -1,0 +1,48 @@
+name: Daily Sigma Alert
+
+on:
+  schedule:
+    # 매일 한국시간 21시 → UTC 12:00
+    - cron: '0 12 * * *'
+  workflow_dispatch:
+
+jobs:
+  run-sigma-check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Syntax check
+        run: python -m py_compile sigma_buy_checker.py
+
+      - name: Smoke test import
+        run: python - <<EOF2
+import sys
+try:
+    import sigma_buy_checker
+    print("✅ import OK")
+except Exception as e:
+    print("❌ import failed:", e)
+    sys.exit(1)
+EOF2
+
+      - name: Run sigma checker
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          EMAIL_USER:     ${{ secrets.EMAIL_USER }}
+          EMAIL_PASS:     ${{ secrets.EMAIL_PASS }}
+          EMAIL_TO:       ${{ secrets.EMAIL_TO }}
+        run: python sigma_buy_checker.py
