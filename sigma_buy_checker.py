@@ -52,7 +52,10 @@ def build_table(df_map, title):
     return title, pd.DataFrame(rows)
 
 if __name__=="__main__":
-    tickers = ["SOXL","SCHD","JEPI","JEPQ","QQQ","SPLG","TMF","NVDA"]
+    tickers  = ["SOXL","SCHD","JEPI","JEPQ","QQQ","SPLG","TMF","NVDA"]
+    today    = dt.date.today()
+    prev_mon = today - dt.timedelta(days=30)
+    start2   = prev_mon - dt.timedelta(days=365)
 
     # 1) 최근 1년치 (365d)
     df1 = {
@@ -61,18 +64,14 @@ if __name__=="__main__":
     }
     title1, tab1 = build_table(df1, "===== 최근 1년치 σ(60D-return) Bands (기준가: MA252) =====")
 
-    # 2) 전월 동기부터 1년
-    today    = dt.date.today()
-    prev_mon = today - dt.timedelta(days=30)
-    start2   = prev_mon - dt.timedelta(days=365)
-    df2 = {
-        t: yf.download(
-            t,
-            start=start2.isoformat(),
-            end=prev_mon.isoformat(),
-            progress=False
-        )[["Close"]].dropna()
+    # 2) 전월 동기부터 1년: 넉넉히 395일치 받아서 범위 자르기
+    df2_full = {
+        t: yf.download(t, period="395d", progress=False)[["Close"]].dropna()
         for t in tickers
+    }
+    df2 = {
+        t: df.loc[start2.isoformat():prev_mon.isoformat()]
+        for t, df in df2_full.items()
     }
     title2, tab2 = build_table(df2, "===== 전월 동기부터 1년 σ(60D-return) Bands (기준가: MA252) =====")
 
