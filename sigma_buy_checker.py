@@ -32,8 +32,11 @@ def check_std_buy_signal_returns(tickers, period=20, k1=1, k2=2):
         # 수익률 기반 σ%
         ret     = df["Close"].pct_change().dropna()
         std_pct = float(ret.rolling(window=period).std().iloc[-1] * 100)
-        # 가격 MA 대비 dev_pct %
+        # 가격 MA 대비 편차 %
         dev_pct = (price / ma - 1) * 100
+        # 실수 매수가격 계산
+        price_1sigma = ma * (1 - k1 * std_pct/100)
+        price_2sigma = ma * (1 - k2 * std_pct/100)
 
         if dev_pct < -k2 * std_pct:
             sig = f"매수(2σ 이하, {std_pct:.2f}%)"
@@ -43,31 +46,31 @@ def check_std_buy_signal_returns(tickers, period=20, k1=1, k2=2):
             sig = "대기"
 
         rows.append({
-            "Ticker":       t,
-            "현재가":        round(price,2),
-            f"{period}일 MA": round(ma,2),
-            f"{period}σ%":   round(std_pct,2),
-            "편차%":         round(dev_pct,2),
-            "신호":         sig
+            "Ticker":        t,
+            "현재가":         round(price,2),
+            f"{period}일 MA":  round(ma,2),
+            f"{period}σ%":    round(std_pct,2),
+            "편차%":          round(dev_pct,2),
+            "1σ 가격":        round(price_1sigma,2),
+            "2σ 가격":        round(price_2sigma,2),
+            "신호":          sig
         })
     return pd.DataFrame(rows)
 
 if __name__=="__main__":
     tickers = ["SOXL","SCHD","JEPI","JEPQ","QQQ","SPLG","TMF","NVDA"]
 
-    # 20일(1개월) 기준 returns-based 시그마
+    # 20일 반환
     df20 = check_std_buy_signal_returns(tickers, period=20)
     header20 = "===== 20일(1개월) Returns σ 전략 ====="
-    print(header20)
-    print(df20.to_string(index=False))
+    print(header20); print(df20.to_string(index=False))
 
-    # 252일(1년) 기준 returns-based 시그마
+    # 252일 반환
     df252 = check_std_buy_signal_returns(tickers, period=252)
     header252 = "===== 252일(1년) Returns σ 전략 ====="
-    print(header252)
-    print(df252.to_string(index=False))
+    print(header252); print(df252.to_string(index=False))
 
-    # 메시지 본문 조합
+    # 전송 본문
     body = "\n".join([
         header20, df20.to_string(index=False),
         "", header252, df252.to_string(index=False)
