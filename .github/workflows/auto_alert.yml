@@ -2,20 +2,28 @@ name: Daily Sigma Alert
 
 on:
   schedule:
-    - cron: '0 12 * * *'       # 매일 KST 21시 → UTC 12:00
+    # 매일 한국시간 21시 → UTC 12:00
+    - cron: '0 12 * * *'
   workflow_dispatch:
 
 jobs:
   run-sigma-check:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
         with:
           python-version: '3.x'
-      - run: |
+
+      - name: Install dependencies
+        run: |
           pip install --upgrade pip
           pip install -r requirements.txt
+
       - name: Run sigma checker
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
