@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-import os, requests, smtplib, yfinance as yf, pandas as pd
+import os, requests, smtplib
+import yfinance as yf
+import pandas as pd
 from email.mime.text import MIMEText
 from email.utils import formataddr
 
@@ -29,10 +31,22 @@ def check_std_buy_signal_auto(tickers, period=20, k1=1, k2=2):
         df = yf.download(t, period=f"{period*3}d", progress=False)[['Close']].copy()
         df['MA']  = df['Close'].rolling(window=period).mean()
         df['STD'] = df['Close'].rolling(window=period).std()
-        last = df.dropna().iloc[-1]
-        price, ma, std = last['Close'], last['MA'], last['STD']
-        l1, l2 = ma - k1*std, ma - k2*std
-        sig = "매수(2σ 이하)" if price<l2 else "매수(1σ 이하)" if price<l1 else "대기"
+        df = df.dropna()
+        last = df.iloc[-1]
+        # 여기에서 float 캐스팅
+        price = float(last['Close'])
+        ma    = float(last['MA'])
+        std   = float(last['STD'])
+        l1    = float(ma - k1 * std)
+        l2    = float(ma - k2 * std)
+
+        if price < l2:
+            sig = "매수(2σ 이하)"
+        elif price < l1:
+            sig = "매수(1σ 이하)"
+        else:
+            sig = "대기"
+
         results.append({
             "Ticker": t,
             "현재가": round(price,2),
