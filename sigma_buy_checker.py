@@ -1,78 +1,108 @@
 #!/usr/bin/env python3
-import os, requests, smtplib, datetime as dt
-import yfinance as yf, pandas as pd
+import os, sys, datetime as dt
+import yfinance as yf, pandas as pd, requests, smtplib
 from email.mime.text import MIMEText
 from email.utils import formataddr
 
 def send_telegram(msg):
+    payload = {
+        "chat_id": os.environ['TELEGRAM_CHAT_ID'],
+        "text": f"```{msg}```",
+        "parse_mode": "Markdown"
+    }
     requests.post(
         f"https://api.telegram.org/bot{os.environ['TELEGRAM_TOKEN']}/sendMessage",
-        json={"chat_id": os.environ['TELEGRAM_CHAT_ID'], "text": msg}
+        json=payload
     )
 
-def send_email(subj, body):
-    user, pwd, to = os.environ['EMAIL_USER'], os.environ['EMAIL_PASS'], os.environ['EMAIL_TO']
-    m = MIMEText(body, _charset='utf-8')
-    m['Subject'], m['From'], m['To'] = subj, formataddr(("Sigma Alert", user)), to
-    s = smtplib.SMTP_SSL("smtp.gmail.com", 465)
-    s.login(user, pwd)
-    s.sendmail(user, [to], m.as_string())
-    s.quit()
+def send_email(subject, body):
+    user = os.environ['EMAIL_USER']
+    pwd  = os.environ['EMAIL_PASS']
+    to   = os.environ['EMAIL_TO']
+    html = f"<pre>{body}</pre>"
+    msg  = MIMEText(html, _subtype='html', _charset='utf-8')
+    msg['Subject'] = subject
+    msg['From']    = formataddr(("Sigma Alert", user))
+    msg['To']      = to
+    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as s:
+        s.login(user, pwd)
+        s.sendmail(user, [to], msg.as_string())
 
-def build_table(df_map, prev_price, title):
+def build_rows(dfs, price_ser):
     rows = []
-    for t, df in df_map.items():
-        closes  = df['Close']
-        ret60   = closes.pct_change(60).dropna()
-        sigma60 = float(ret60.std() * 100)       # 60-day return σ%
-        ma252   = float(closes.rolling(252).mean().iloc[-1])
-        p1      = ma252 * (1 - sigma60/100)
-        p2      = ma252 * (1 - 2 * sigma60/100)
-        yest    = prev_price[t]
-        if yest < p2:
-            sig = "매수(2σ 이하)"
-        elif yest < p1:
-            sig = "매수(1σ 이하)"
-        else:
-            sig = "대기"
-        rows.append({
-            "Ticker":   t,
-            "전일종가":  round(yest, 2),
-            "1σ가":     round(p1,   2),
-            "2σ가":     round(p2,   2),
-            "신호":      sig
-        })
-    return title, pd.DataFrame(rows)
+    for t, df in dfs.items():
+        prev      = float(price_ser[t])
+        sigma_pct = float(df['Close'].pct_change().dropna().tail(60).std() * 100)
+        p1        = prev * (1 - sigma_pct/100)
+        p2        = prev * (1 - 2*sigma_pct/100)
+        rows.append((t, prev, p1, p2))
+    return rows
 
-if __name__=="__main__":
-    tickers = ["SOXL","SCHD","JEPI","JEPQ","QQQ","SPLG","TMF","NVDA"]
+def format_table(title, rows):
+    lines = [ title, f"{'티커':<6}{'종가':>8}{'1σ':>8}{'2σ':>8}" ]
+    for t, prev, p1, p2 in rows:
+        lines.append(f"{t:<6}{prev:>8.2f}{p1:>8.2f}{p2:>8.2f}")
+    return "\n".join(lines)
 
-    # ── 전일 종가 가져오기 ──
-    df0 = yf.download(tickers, period="2d", progress=False)["Close"].dropna()
-    prev_price = {t: float(df0[t].iloc[-2]) for t in tickers}
+if __name__ == "__main__":
+    # 날짜 인자 처리 (YY/MM/DD), 없으면 오늘
+    if len(sys.argv) > 1:
+        try:
+            base_date = dt.datetime.strptime(sys.argv[1], "%y/%m/%d").date()
+        except ValueError:
+            print("날짜 형식 오류: YY/MM/DD 로 입력해 주세요.")
+            sys.exit(1)
+    else:
+        base_date = dt.date.today()
+    next_day   = base_date + dt.timedelta(days=1)
+    tickers    = ["SOXL","SCHD","JEPI","JEPQ","QQQ","SPLG","TMF","NVDA"]
 
-    # ── 최근 1년치(365일) ──
-    df1 = {t: yf.download(t, period="365d", progress=False)[["Close"]].dropna()
-           for t in tickers}
-    title1, tab1 = build_table(df1, prev_price, "@최근1년기준(전일종가 기준)")
+    # 1) 기준일 종가
+    if base_date == dt.date.today():
+        df_price  = yf.download(tickers, period="2d", progress=False)["Close"]
+        price_ser = df_price.iloc[-1]
+    else:
+        df_price  = yf.download(
+            tickers,
+            start=base_date.isoformat(),
+            end=next_day.isoformat(),
+            progress=False
+        )["Close"]
+        price_ser = df_price.iloc[-1]
 
-    # ── 전월 동기부터 1년 ──
-    today    = dt.date.today()
-    prev_mon = today - dt.timedelta(days=30)
-    start2   = prev_mon - dt.timedelta(days=365)
-    df2 = {t: yf.download(
-             t,
-             start=start2.isoformat(),
-             end=prev_mon.isoformat(),
-             progress=False
-           )[["Close"]].dropna()
-           for t in tickers}
-    title2, tab2 = build_table(df2, prev_price, "@전월동기→1년기준(전일종가 기준)")
+    # 2) @최근1년기준
+    start_1y = base_date - dt.timedelta(days=365)
+    dfs1 = {
+        t: yf.download(
+            t,
+            start=start_1y.isoformat(),
+            end=next_day.isoformat(),
+            progress=False
+        )[["Close"]].dropna()
+        for t in tickers
+    }
+    rows1 = build_rows(dfs1, price_ser)
+    txt1  = format_table(f"📍최근1년기준({base_date})", rows1)
 
-    out = "\n".join([
-        title1, tab1.to_string(index=False),
-        "", title2, tab2.to_string(index=False)
-    ])
+    # 3) @전월말→1년기준
+    prev_month = base_date.replace(day=1) - dt.timedelta(days=1)
+    start2     = prev_month - dt.timedelta(days=365)
+    dfs2 = {
+        t: (
+            yf.download(
+                t,
+                start=start2.isoformat(),
+                end=next_day.isoformat(),
+                progress=False
+            )[["Close"]].dropna()
+        ).loc[:prev_month.isoformat()]
+        for t in tickers
+    }
+    rows2 = build_rows(dfs2, price_ser)
+    txt2  = format_table(f"📍전월말→1년기준({base_date})", rows2)
+
+    # 4) 출력 & 전송
+    out = txt1 + "\n\n" + txt2
     print(out)
     send_telegram(out)
-    send_email("Sigma Buy Signals (Y-day Close Bands)", out)
+    send_email(f"Sigma Signals ({base_date})", out)
