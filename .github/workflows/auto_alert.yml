@@ -2,17 +2,17 @@ name: Daily Sigma Alert
 
 on:
   schedule:
-    # 매일 한국시간 21시 → UTC 12:00
-    - cron: '0 12 * * *'
+    - cron: '0 12 * * *'       # 매일 KST 21시 → UTC 12:00
   workflow_dispatch:
 
 jobs:
   run-sigma-check:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
+        with:
+          ref: main
 
       - name: Set up Python
         uses: actions/setup-python@v4
