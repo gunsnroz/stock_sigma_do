@@ -1,5 +1,3 @@
-cd ~/stock_sigma_alert
-cat > sigma_buy_checker.py << 'EOF'
 #!/usr/bin/env python3
 import os, requests, smtplib, datetime as dt
 import yfinance as yf, pandas as pd
@@ -25,9 +23,7 @@ def build_table(df_map, today_price, yest_close, title):
     for t, df in df_map.items():
         prev_close = yest_close[t]
         tp         = today_price[t]
-        # σ_daily%: 1년치 일별 수익률 표준편차
         sigma_pct  = float(df['Close'].pct_change().dropna().std() * 100)
-        # 밴드 (전일종가 기준)
         b1 = prev_close * (1 - sigma_pct/100)
         b2 = prev_close * (1 - 2*sigma_pct/100)
         if   tp < b2: sig = "매수(2σ 이하)"
@@ -48,7 +44,7 @@ if __name__=="__main__":
     prev_mon = today - dt.timedelta(days=30)
     start2   = prev_mon - dt.timedelta(days=365)
 
-    # — 오늘가(실시간 우선, 없으면 어제 종가), 어제 종가 한 번만
+    # --- fetch today/ yesterday prices once each ---
     df_today = yf.download(tickers, period="1d", progress=False)["Close"].iloc[-1]
     df2d     = yf.download(tickers, period="2d", progress=False)["Close"]
     today_price = {}
@@ -84,8 +80,3 @@ if __name__=="__main__":
     print(out)
     send_telegram(out)
     send_email("Sigma Buy Signals (한방버전)", out)
-EOF
-
-chmod +x sigma_buy_checker.py
-source venv/bin/activate
-./sigma_buy_checker.py
