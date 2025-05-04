@@ -40,6 +40,8 @@ def build_rows(dfs, price_ser):
 
 def format_table(title, rows):
     lines = [ title, f"{'티커':<6}{'종가':>8}{'1σ':>8}{'2σ':>8}" ]
+    lines = [ title, f"{'티커':<6}{'종가':>6}{'1σ':>8}{'2σ':>8}" ]
+
     for t, prev, p1, p2 in rows:
         lines.append(f"{t:<6}{prev:>8.2f}{p1:>8.2f}{p2:>8.2f}")
     return "\n".join(lines)
