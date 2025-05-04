@@ -24,16 +24,16 @@ def build_table(df_map, today_price, yest_close, title):
         prev_close = yest_close[t]
         tp         = today_price[t]
         sigma_pct  = float(df['Close'].pct_change().dropna().std() * 100)
-        b1 = prev_close * (1 - sigma_pct/100)
-        b2 = prev_close * (1 - 2*sigma_pct/100)
-        if   tp < b2: sig = "매수(2σ 이하)"
-        elif tp < b1: sig = "매수(1σ 이하)"
-        else:          sig = "대기"
+        band1 = prev_close * (1 - sigma_pct/100)
+        band2 = prev_close * (1 - 2*sigma_pct/100)
+        if   tp < band2: sig = "매수(2σ 이하)"
+        elif tp < band1: sig = "매수(1σ 이하)"
+        else:            sig = "대기"
         rows.append({
             "Ticker":   t,
             "전일종가":   round(prev_close, 2),
-            "1σ":       round(b1,         2),
-            "2σ":       round(b2,         2),
+            "1σ":       round(band1,     2),
+            "2σ":       round(band2,     2),
             "신호":      sig
         })
     return title, pd.DataFrame(rows)
@@ -44,7 +44,7 @@ if __name__=="__main__":
     prev_mon = today - dt.timedelta(days=30)
     start2   = prev_mon - dt.timedelta(days=365)
 
-    # 오늘가(실시간 우선) & 어제 종가
+    # 1) fetch today’s last price and yesterday’s close
     df_today = yf.download(tickers, period="1d", progress=False)["Close"].iloc[-1]
     df2d     = yf.download(tickers, period="2d", progress=False)["Close"]
     today_price = {}
@@ -52,17 +52,16 @@ if __name__=="__main__":
     for t in tickers:
         tp = yf.Ticker(t).fast_info.get("last_price") or float(df_today[t])
         today_price[t] = float(tp)
-        # ← 이 부분이 핵심 수정: 어제 종가는 항상 iloc[-2]
-        yest_close[t]  = float(df2d[t].iloc[-2])
+        yest_close[t]  = float(df2d[t].iloc[-2])   # yesterday’s close
 
-    # 1) 최근 1년치
+    # 2) build @최근1년기준(전일종가 기준)
     df1 = {
         t: yf.download(t, period="365d", progress=False)[["Close"]].dropna()
         for t in tickers
     }
     title1, tab1 = build_table(df1, today_price, yest_close, "@최근1년기준(전일종가 기준)")
 
-    # 2) 전월 동기부터 1년
+    # 3) build @최근1년기준(직전월, 전일종가 기준)
     df_full = {
         t: yf.download(t, period="395d", progress=False)[["Close"]].dropna()
         for t in tickers
@@ -73,6 +72,7 @@ if __name__=="__main__":
     }
     title2, tab2 = build_table(df2, today_price, yest_close, "@최근1년기준(직전월, 전일종가 기준)")
 
+    # 4) output & notify
     out = "\n".join([
         title1, tab1.to_string(index=False),
         "", title2, tab2.to_string(index=False)
