@@ -44,16 +44,16 @@ if __name__=="__main__":
     prev_mon = today - dt.timedelta(days=30)
     start2   = prev_mon - dt.timedelta(days=365)
 
-    # --- fetch today/ yesterday prices once each ---
+    # 오늘가(실시간 우선) & 어제 종가
     df_today = yf.download(tickers, period="1d", progress=False)["Close"].iloc[-1]
     df2d     = yf.download(tickers, period="2d", progress=False)["Close"]
     today_price = {}
     yest_close  = {}
     for t in tickers:
-        info = yf.Ticker(t).fast_info
-        tp   = info.get("last_price") or float(df_today[t])
+        tp = yf.Ticker(t).fast_info.get("last_price") or float(df_today[t])
         today_price[t] = float(tp)
-        yest_close[t]  = float(df2d[t].iloc[0])
+        # ← 이 부분이 핵심 수정: 어제 종가는 항상 iloc[-2]
+        yest_close[t]  = float(df2d[t].iloc[-2])
 
     # 1) 최근 1년치
     df1 = {
