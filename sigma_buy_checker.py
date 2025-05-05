@@ -75,14 +75,14 @@ def main():
     for t in tickers:
         price = float(price_ser[t])
         out.append("")
-        out.append(f"{t:<6}{'종가':>8}{'1σ':>8}{'2σ':>8}{'σ(%)':>8}")
+        out.append(f"{t:<6}{'종가':>6}{'1σ':>6}{'2σ':>6}{'σ(%)':>6}")
         for w in windows:
             # ← N일 수익률 기준 σ 계산
             ser   = full[t].pct_change(periods=w).dropna()
             sigma = float(ser.std() * 100)
             p1    = price * (1 - sigma/100)
             p2    = price * (1 - 2*sigma/100)
-            out.append(f"{w:<6}{price:8.2f}{p1:8.2f}{p2:8.2f}{sigma:8.2f}")
+            out.append(f"{w:<6}{price:6.2f}{p1:6.2f}{p2:6.2f}{sigma:6.2f}")
 
     output = "\n".join(out)
 
