@@ -2,8 +2,7 @@
 import warnings
 warnings.filterwarnings("ignore", category=FutureWarning)
 
-import os
-import sys
+import os, sys
 import datetime as dt
 import yfinance as yf
 import requests
@@ -75,17 +74,23 @@ def main():
         for t in tickers
     }
 
-    # 5) 결과 문자열 만들기
-    out_lines = []
+    # 5) 결과 문자열 만들기 (맨 앞에 기준일 📌 이모지 포함)
+    out_lines = [f"📌 기준일: {base_date}"]
     for t in tickers:
         price = float(price_ser[t])
-        out_lines.append(f"\n{t:<6}{'종가':>8}{'1σ':>8}{'2σ':>8}{'σ(%)':>8}")
+        # 헤더 및 구분선
+        header = f"{t:<6}{'종가':>8}{'1σ':>8}{'2σ':>8}{'σ(%)':>8}"
+        out_lines.append("")                # 빈 줄
+        out_lines.append(header)
+        out_lines.append("-" * len(header)) # 구분선
+        # 윈도우별 행
         for w in windows:
             ser   = full[t].pct_change().dropna().tail(w)
             sigma = float(ser.std() * 100)
             p1    = price * (1 - sigma/100)
             p2    = price * (1 - 2*sigma/100)
             out_lines.append(f"{w:<6}{price:8.2f}{p1:8.2f}{p2:8.2f}{sigma:8.2f}")
+
     output = "\n".join(out_lines)
 
     # 6) 출력 및 전송
