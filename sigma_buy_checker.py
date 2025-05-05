@@ -32,7 +32,8 @@ def build_rows(dfs, price_ser):
     rows = []
     for t, df in dfs.items():
         prev      = float(price_ser[t])
-        sigma_pct = float(df['Close'].pct_change().dropna().tail(60).std() * 100)
+        # 60거래일 수익률 기준 σ 계산
+        sigma_pct = float(df['Close'].pct_change(60).dropna().std() * 100)
         p1        = prev * (1 - sigma_pct/100)
         p2        = prev * (1 - 2*sigma_pct/100)
         rows.append((t, prev, p1, p2))
@@ -40,14 +41,12 @@ def build_rows(dfs, price_ser):
 
 def format_table(title, rows):
     lines = [ title, f"{'티커':<6}{'종가':>8}{'1σ':>8}{'2σ':>8}" ]
-    lines = [ title, f"{'티커':<6}{'종가':>6}{'1σ':>8}{'2σ':>8}" ]
-
     for t, prev, p1, p2 in rows:
         lines.append(f"{t:<6}{prev:>8.2f}{p1:>8.2f}{p2:>8.2f}")
     return "\n".join(lines)
 
 if __name__ == "__main__":
-    # 날짜 인자 처리 (YY/MM/DD), 없으면 오늘
+    # 1) 날짜 인자 처리 (YY/MM/DD), 없으면 오늘
     if len(sys.argv) > 1:
         try:
             base_date = dt.datetime.strptime(sys.argv[1], "%y/%m/%d").date()
@@ -57,9 +56,10 @@ if __name__ == "__main__":
     else:
         base_date = dt.date.today()
     next_day   = base_date + dt.timedelta(days=1)
+
     tickers    = ["SOXL","SCHD","JEPI","JEPQ","QQQ","SPLG","TMF","NVDA"]
 
-    # 1) 기준일 종가
+    # 2) 기준일 종가 가져오기
     if base_date == dt.date.today():
         df_price  = yf.download(tickers, period="2d", progress=False)["Close"]
         price_ser = df_price.iloc[-1]
@@ -72,38 +72,34 @@ if __name__ == "__main__":
         )["Close"]
         price_ser = df_price.iloc[-1]
 
-    # 2) @최근1년기준
+    # 3) 최근 1년 기준
     start_1y = base_date - dt.timedelta(days=365)
     dfs1 = {
-        t: yf.download(
-            t,
-            start=start_1y.isoformat(),
-            end=next_day.isoformat(),
-            progress=False
-        )[["Close"]].dropna()
+        t: yf.download(t,
+                       start=start_1y.isoformat(),
+                       end=next_day.isoformat(),
+                       progress=False)[["Close"]].dropna()
         for t in tickers
     }
     rows1 = build_rows(dfs1, price_ser)
     txt1  = format_table(f"📍최근1년기준({base_date})", rows1)
 
-    # 3) @전월말→1년기준
+    # 4) 전월말→1년 기준
     prev_month = base_date.replace(day=1) - dt.timedelta(days=1)
     start2     = prev_month - dt.timedelta(days=365)
     dfs2 = {
         t: (
-            yf.download(
-                t,
-                start=start2.isoformat(),
-                end=next_day.isoformat(),
-                progress=False
-            )[["Close"]].dropna()
+            yf.download(t,
+                        start=start2.isoformat(),
+                        end=next_day.isoformat(),
+                        progress=False)[["Close"]].dropna()
         ).loc[:prev_month.isoformat()]
         for t in tickers
     }
     rows2 = build_rows(dfs2, price_ser)
     txt2  = format_table(f"📍전월말→1년기준({base_date})", rows2)
 
-    # 4) 출력 & 전송
+    # 5) 출력 & 전송
     out = txt1 + "\n\n" + txt2
     print(out)
     send_telegram(out)
