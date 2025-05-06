@@ -12,26 +12,37 @@ if [ "$#" -eq 2 ]; then
   custom_flag=true
 else
   end_date=$(date '+%Y-%m-%d')
-  start_date=$(date -d '400 days ago' '+%Y-%m-%d')
+  if [ "$(uname)" = "Darwin" ]; then
+    start_date=$(date -v -400d '+%Y-%m-%d')
+  else
+    start_date=$(date -d '400 days ago' '+%Y-%m-%d')
+  fi
   custom_flag=false
 fi
 
-echo ">>> start_date=${start_date}, end_date=${end_date}" >&2
+# Python 으로 flag 전달
+export CUSTOM_FLAG="$custom_flag"
 
 # 2) Python 계산
-python3 <<PYCODE
-import warnings
+python3 <<EOF
+import os, warnings
 warnings.filterwarnings("ignore", category=FutureWarning)
 
 import yfinance as yf
 from datetime import datetime, timedelta
 
-tickers     = ["SOXL","TMF","SCHD","JEPI","JEPQ","QQQ","SPLG","NVDA","TQQQ"]
-all_windows = [10,20,60,90,120,252]
+# 커스텀 기간 여부
+custom_flag = os.getenv('CUSTOM_FLAG','false').lower() == 'true'
 
+# 종목 & 윈도우
+tickers     = ["SOXL","TMF","SCHD","JEPI","JEPQ","QQQ","SPLG","NVDA","TQQQ"]
+std_windows = [10,20,60,90,120,252]
+
+# 날짜 범위
 start_date = "${start_date}"
 end_date   = "${end_date}"
-end_adj    = (datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1)).strftime("%Y-%m-%d")
+date_fmt   = "%Y-%m-%d"
+end_adj    = (datetime.strptime(end_date, date_fmt) + timedelta(days=1)).strftime(date_fmt)
 
 # 1) 항상 전일 종가 사용
 prev_close = {}
@@ -44,46 +55,36 @@ for t in tickers:
     else:
         prev_close[t] = None
 
-# 2) 기준일(Base_date)
-base = yf.download(tickers[0], start=start_date, end=end_adj,
-                   auto_adjust=True, progress=False)["Close"].dropna()
-print(f"@Base_date: {base.index[-1].strftime('%Y-%m-%d')}\n")
+# 2) 기준일 출력
+base = yf.download(tickers[0], start=start_date, end=end_adj, auto_adjust=True, progress=False)["Close"].dropna()
+print(f"@Base_date: {base.index[-1].strftime(date_fmt)}\n")
 
 # 3) 결과 출력
 for t in tickers:
-    data = yf.download(t, start=start_date, end=end_adj,
-                       auto_adjust=True, progress=False)["Close"].dropna()
+    data = yf.download(t, start=start_date, end=end_adj, auto_adjust=True, progress=False)["Close"].dropna()
     rets = data.pct_change().dropna()
     pc   = prev_close.get(t)
     if pc is None:
         print(f"{t}: 현재 종가 조회 실패\n")
         continue
 
-    windows = [w for w in all_windows if len(rets) >= w]
-    if not windows and not custom_flag:
-        print(f"{t}: 지정 기간({start_date}~{end_date})에 거래일 부족\n")
-        continue
-
-<<<<<<< HEAD
-    # 헤더 (간격 타이트하게)
-=======
-    # 헤더
->>>>>>> 0388da6 (Fix GNU date usage & add SMTP defaults)
-    print(f"{t:>4s} {'종가':>3s} {'1σ':>6s} {'2σ':>6s} {'σ(%)':>7s}")
-    for w in windows:
+    # 표준 윈도우
+    print(f"{t:>4s} {'종가':>4s} {'1σ':>6s} {'2σ':>6s} {'σ(%)':>7s}")
+    for w in std_windows:
+        if len(rets) < w: 
+            continue
         s   = float(rets.tail(w).std())
         pct = s * 100
         p1  = pc * (1 - s)
         p2  = pc * (1 - 2*s)
         print(f"{w:4d} {pc:6.2f} {p1:6.2f} {p2:6.2f} {pct:5.2f}%")
 
-    # 커스텀 기간 윈도우
+    # 커스텀 기간
     if custom_flag:
-        s_c   = float(rets.std())
-        pct_c = s_c * 100
-        p1_c  = pc * (1 - s_c)
-        p2_c  = pc * (1 - 2*s_c)
-        print(f"{'c':>4s} {pc:6.2f} {p1_c:6.2f} {p2_c:6.2f} {pct_c:5.2f}%")
+        s   = float(rets.std())
+        pct = s * 100
+        p1  = pc * (1 - s)
+        p2  = pc * (1 - 2*s)
+        print(f"{'c':>4s} {pc:6.2f} {p1:6.2f} {p2:6.2f} {pct:5.2f}%")
 
     print()
-PYCODE
