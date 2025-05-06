@@ -58,12 +58,12 @@ for t in tickers:
         continue
 
     # 헤더 (간격 타이트하게)
-    print(f"{t:<5s} {'종가':>3s} {'1σ':>3s} {'2σ':>3s} {'σ(%)':>5s}")
+    print(f"{t:<5s} {'종가':>3s} {'1σ':>6s} {'2σ':>6s} {'σ(%)':>5s}")
     for w in windows:
         s   = float(rets.tail(w).std())
         pct = s * 100
         p1  = pc * (1 - s)
         p2  = pc * (1 - 2*s)
-        print(f"{w:4d} {pc:6.2f} {p1:6.2f} {p2:6.2f} {pct:4.2f}%")
+        print(f"{w:4d} {pc:6.2f} {p1:6.2f} {p2:6.2f} {pct:5.2f}%")
     print()
 PYCODE
