@@ -33,11 +33,16 @@ start_date = "${start_date}"
 end_date   = "${end_date}"
 end_adj    = (datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1)).strftime("%Y-%m-%d")
 
-# 1) 현재 종가
+# 1) 현재종가 (항상 전일 종가 사용)
 prev_close = {}
 for t in tickers:
     hist = yf.download(t, period="2d", auto_adjust=True, progress=False)["Close"].dropna()
-    prev_close[t] = float(hist.iloc[-1]) if not hist.empty else None
+    if len(hist) >= 2:
+        prev_close[t] = float(hist.iloc[-2])
+    elif len(hist) == 1:
+        prev_close[t] = float(hist.iloc[-1])
+    else:
+        prev_close[t] = None
 
 # 2) 기준일(Base_date)
 base = yf.download(tickers[0], start=start_date, end=end_adj,
@@ -61,7 +66,6 @@ for t in tickers:
 
     # 헤더 (간격 타이트하게)
     print(f"{t:>4s} {'종가':>3s} {'1σ':>6s} {'2σ':>6s} {'σ(%)':>7s}")
-    # 표준 윈도우 출력
     for w in windows:
         s   = float(rets.tail(w).std())
         pct = s * 100
@@ -69,7 +73,7 @@ for t in tickers:
         p2  = pc * (1 - 2*s)
         print(f"{w:4d} {pc:6.2f} {p1:6.2f} {p2:6.2f} {pct:5.2f}%")
 
-    # 커스텀 기간 윈도우 출력
+    # 커스텀 기간 윈도우
     if custom_flag:
         s_c   = float(rets.std())
         pct_c = s_c * 100
