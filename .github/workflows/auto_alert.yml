@@ -1,29 +1,26 @@
----
 name: "Daily Sigma Alert"
 
 on:
   schedule:
-    - cron: '0 11 * * 1-5'   # 월~금 UTC 11시 → KST 20시
+    - cron: '0 11 * * 1-5'
   workflow_dispatch:
 
 jobs:
   run-sigma-check:
     runs-on: ubuntu-latest
     env:
-      TZ: "Asia/Seoul"
+      TZ: Asia/Seoul
       TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
       TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-      EMAIL_USER: ${{ secrets.EMAIL_USER }}
-      EMAIL_PASS: ${{ secrets.EMAIL_PASS }}
-      EMAIL_TO: ${{ secrets.EMAIL_TO }}
-      SMTP_HOST: ${{ secrets.SMTP_HOST }}
-      SMTP_PORT: ${{ secrets.SMTP_PORT }}
+      EMAIL_USER:     ${{ secrets.EMAIL_USER }}
+      EMAIL_PASS:     ${{ secrets.EMAIL_PASS }}
+      EMAIL_TO:       ${{ secrets.EMAIL_TO }}
+      SMTP_HOST:      ${{ secrets.SMTP_HOST }}
+      SMTP_PORT:      ${{ secrets.SMTP_PORT }}
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
+      - uses: actions/setup-python@v4
         with:
           python-version: '3.x'
 
@@ -37,30 +34,14 @@ jobs:
         run: |
           set -euxo pipefail
 
-          # 1) Run script
           OUTPUT="$(bash ./sigma_multi.sh)"
-
-          # 2) Telegram
           PAYLOAD="\`\`\`\n${OUTPUT}\n\`\`\`"
+
+          # 1) Telegram
           curl -v -X POST "https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage" \
             -d chat_id="${TELEGRAM_CHAT_ID}" \
             -d text="${PAYLOAD}" \
             -d parse_mode="Markdown"
 
-          # 3) Email (inline Python)
-          cat <<PYCODE | python3
-import os, smtplib
-from email.mime.text import MIMEText
-
-text = """${PAYLOAD}"""
-msg = MIMEText(text, _charset='utf-8')
-msg['Subject'] = "매수 단가 알림"
-msg['From'] = os.environ['EMAIL_USER']
-msg['To'] = os.environ['EMAIL_TO']
-
-smtp = smtplib.SMTP(os.environ['SMTP_HOST'], int(os.environ['SMTP_PORT']))
-smtp.starttls()
-smtp.login(os.environ['EMAIL_USER'], os.environ['EMAIL_PASS'])
-smtp.send_message(msg)
-smtp.quit()
-PYCODE
+          # 2) Email
+          python3 send_alert.py "${PAYLOAD}"
