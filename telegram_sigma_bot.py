@@ -3,11 +3,18 @@ import os, subprocess
 from telegram import Update, ParseMode
 from telegram.ext import Updater, CommandHandler, CallbackContext
 
-TOKEN  = os.environ['TELEGRAM_TOKEN']
-SCRIPT = os.path.join(os.getcwd(), 'sigma_multi.sh')
+TOKEN = os.environ['TELEGRAM_TOKEN']
+# 항상 이 파일이 있는 폴더에서 sigma_multi.sh를 찾습니다
+SCRIPT = os.path.join(os.path.dirname(__file__), 'sigma_multi.sh')
 
 def sigma(update: Update, context: CallbackContext):
     cmd = [SCRIPT] + context.args
+    # 1) 실행 커맨드 디버깅
+    update.message.reply_text(
+        f"🔍 Running command:\n<code>{' '.join(cmd)}</code>",
+        parse_mode=ParseMode.HTML
+    )
+    # 2) 실제 실행
     try:
         res = subprocess.run(
             cmd, check=True, capture_output=True, text=True, env=os.environ
