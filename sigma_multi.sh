@@ -9,9 +9,11 @@ if [ "$#" -eq 2 ]; then
   arg2=$2; yy2=${arg2:0:2}; mm2=${arg2:2:2}; dd2=${arg2:4:2}
   start_date="20${yy1}-${mm1}-${dd1}"
   end_date="20${yy2}-${mm2}-${dd2}"
+  custom_flag=true
 else
   end_date=$(date '+%Y-%m-%d')
   start_date=$(date -d '400 days ago' '+%Y-%m-%d')
+  custom_flag=false
 fi
 
 echo ">>> start_date=${start_date}, end_date=${end_date}" >&2
@@ -24,7 +26,7 @@ warnings.filterwarnings("ignore", category=FutureWarning)
 import yfinance as yf
 from datetime import datetime, timedelta
 
-tickers     = ["SOXL","TMF","SCHD","JEPI","JEPQ","QQQ","SPLG","NVDA"]
+tickers     = ["SOXL","TMF","SCHD","JEPI","JEPQ","QQQ","SPLG","NVDA","TQQQ"]
 all_windows = [10,20,60,90,120,252]
 
 start_date = "${start_date}"
@@ -53,17 +55,27 @@ for t in tickers:
         continue
 
     windows = [w for w in all_windows if len(rets) >= w]
-    if not windows:
+    if not windows and not custom_flag:
         print(f"{t}: 지정 기간({start_date}~{end_date})에 거래일 부족\n")
         continue
 
     # 헤더 (간격 타이트하게)
     print(f"{t:>4s} {'종가':>3s} {'1σ':>6s} {'2σ':>6s} {'σ(%)':>7s}")
+    # 표준 윈도우 출력
     for w in windows:
         s   = float(rets.tail(w).std())
         pct = s * 100
         p1  = pc * (1 - s)
         p2  = pc * (1 - 2*s)
         print(f"{w:4d} {pc:6.2f} {p1:6.2f} {p2:6.2f} {pct:5.2f}%")
+
+    # 커스텀 기간 윈도우 출력
+    if custom_flag:
+        s_c   = float(rets.std())
+        pct_c = s_c * 100
+        p1_c  = pc * (1 - s_c)
+        p2_c  = pc * (1 - 2*s_c)
+        print(f"{'c':>4s} {pc:6.2f} {p1_c:6.2f} {p2_c:6.2f} {pct_c:5.2f}%")
+
     print()
 PYCODE
