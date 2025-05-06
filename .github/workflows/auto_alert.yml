@@ -1,4 +1,4 @@
-name: Daily Sigma Alert
+name: "Daily Sigma Alert"
 
 on:
   schedule:
@@ -32,21 +32,16 @@ jobs:
           pip install -r requirements.txt
 
       - name: Run sigma checker and send alerts
+        shell: bash
         run: |
-          # 1) 결과를 변수에 담습니다.
           OUTPUT="$(bash ./sigma_multi.sh)"
-
-          # 2) Telegram 전송
-          #    - Markdown 코드 블록으로 감싸서 monospace 테이블 유지
           PAYLOAD="\`\`\`\n${OUTPUT}\n\`\`\`"
           curl -s -X POST \
             "https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage" \
             -d chat_id="${TELEGRAM_CHAT_ID}" \
-            -d text="$PAYLOAD" \
+            -d text="${PAYLOAD}" \
             -d parse_mode="Markdown"
-
-          # 3) Email 전송 (Python inline)
-          python3 - <<EOF
+          cat <<PYCODE | python3
 import os, smtplib
 from email.mime.text import MIMEText
 
@@ -61,4 +56,4 @@ smtp.starttls()
 smtp.login(os.environ['EMAIL_USER'], os.environ['EMAIL_PASS'])
 smtp.send_message(msg)
 smtp.quit()
-EOF
+PYCODE
