@@ -1,3 +1,4 @@
+---
 name: "Daily Sigma Alert"
 
 on:
@@ -9,14 +10,14 @@ jobs:
   run-sigma-check:
     runs-on: ubuntu-latest
     env:
-      TZ: Asia/Seoul
+      TZ: "Asia/Seoul"
       TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
       TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-      EMAIL_USER:     ${{ secrets.EMAIL_USER }}
-      EMAIL_PASS:     ${{ secrets.EMAIL_PASS }}
-      EMAIL_TO:       ${{ secrets.EMAIL_TO }}
-      SMTP_HOST:      ${{ secrets.SMTP_HOST }}
-      SMTP_PORT:      ${{ secrets.SMTP_PORT }}
+      EMAIL_USER: ${{ secrets.EMAIL_USER }}
+      EMAIL_PASS: ${{ secrets.EMAIL_PASS }}
+      EMAIL_TO: ${{ secrets.EMAIL_TO }}
+      SMTP_HOST: ${{ secrets.SMTP_HOST }}
+      SMTP_PORT: ${{ secrets.SMTP_PORT }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -36,22 +37,17 @@ jobs:
         run: |
           set -euxo pipefail
 
-          echo "===== Running sigma_multi.sh ====="
+          # 1) Run script
           OUTPUT="$(bash ./sigma_multi.sh)"
-          echo "===== OUTPUT ====="
-          echo "$OUTPUT"
-          echo "=================="
 
+          # 2) Telegram
           PAYLOAD="\`\`\`\n${OUTPUT}\n\`\`\`"
-
-          # Telegram
-          curl -v -X POST \
-            "https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage" \
+          curl -v -X POST "https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage" \
             -d chat_id="${TELEGRAM_CHAT_ID}" \
             -d text="${PAYLOAD}" \
             -d parse_mode="Markdown"
 
-          # Email (inline Python)
+          # 3) Email (inline Python)
           cat <<PYCODE | python3
 import os, smtplib
 from email.mime.text import MIMEText
@@ -59,8 +55,8 @@ from email.mime.text import MIMEText
 text = """${PAYLOAD}"""
 msg = MIMEText(text, _charset='utf-8')
 msg['Subject'] = "매수 단가 알림"
-msg['From']    = os.environ['EMAIL_USER']
-msg['To']      = os.environ['EMAIL_TO']
+msg['From'] = os.environ['EMAIL_USER']
+msg['To'] = os.environ['EMAIL_TO']
 
 smtp = smtplib.SMTP(os.environ['SMTP_HOST'], int(os.environ['SMTP_PORT']))
 smtp.starttls()
