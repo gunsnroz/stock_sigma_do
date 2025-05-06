@@ -1,0 +1,18 @@
+#!/usr/bin/env python3
+import os
+import sys
+import smtplib
+from email.mime.text import MIMEText
+
+# 파라미터로 전달받은 메시지
+payload = sys.argv[1]
+
+msg = MIMEText(payload, _charset='utf-8')
+msg['Subject'] = "매수 단가 알림"
+msg['From']    = os.environ['EMAIL_USER']
+msg['To']      = os.environ['EMAIL_TO']
+
+with smtplib.SMTP(os.environ['SMTP_HOST'], int(os.environ['SMTP_PORT'])) as smtp:
+    smtp.starttls()
+    smtp.login(os.environ['EMAIL_USER'], os.environ['EMAIL_PASS'])
+    smtp.send_message(msg)
