@@ -36,22 +36,22 @@ jobs:
         run: |
           set -euxo pipefail
 
-          # 1) 스크립트 출력 캡처 & 로깅
           echo "===== Running sigma_multi.sh ====="
           OUTPUT="$(bash ./sigma_multi.sh)"
           echo "===== OUTPUT ====="
           echo "$OUTPUT"
           echo "=================="
 
-          # 2) Telegram 보내기 (디버그 모드)
           PAYLOAD="\`\`\`\n${OUTPUT}\n\`\`\`"
+
+          # Telegram
           curl -v -X POST \
             "https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage" \
             -d chat_id="${TELEGRAM_CHAT_ID}" \
             -d text="${PAYLOAD}" \
             -d parse_mode="Markdown"
 
-          # 3) Email 전송 (inline Python)
+          # Email (inline Python)
           cat <<PYCODE | python3
 import os, smtplib
 from email.mime.text import MIMEText
