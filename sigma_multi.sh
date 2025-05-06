@@ -58,7 +58,7 @@ for t in tickers:
         continue
 
     # 헤더 (간격 타이트하게)
-    print(f"{t:<5s} {'종가':>3s} {'1σ':>6s} {'2σ':>6s} {'σ(%)':>5s}")
+    print(f"{t:>4s} {'종가':>3s} {'1σ':>6s} {'2σ':>6s} {'σ(%)':>7s}")
     for w in windows:
         s   = float(rets.tail(w).std())
         pct = s * 100
