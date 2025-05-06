@@ -1,37 +1,28 @@
 #!/usr/bin/env python3
-import os
-import subprocess
+import os, subprocess
 from telegram import Update, ParseMode
 from telegram.ext import Updater, CommandHandler, CallbackContext
 
-TOKEN = os.environ['TELEGRAM_TOKEN']
+TOKEN  = os.environ['TELEGRAM_TOKEN']
+SCRIPT = os.path.join(os.getcwd(), 'sigma_multi.sh')
 
 def sigma(update: Update, context: CallbackContext):
-    args = context.args
-    script = os.path.join(os.getcwd(), 'sigma_multi.sh')
-    if len(args) == 2:
-        cmd = [script, args[0], args[1]]
-    else:
-        cmd = [script]
+    cmd = [SCRIPT] + context.args
     try:
         res = subprocess.run(
-            cmd,
-            check=True,
-            capture_output=True,
-            text=True,
-            env=os.environ
+            cmd, check=True, capture_output=True, text=True, env=os.environ
         )
-        output = res.stdout.strip()
     except subprocess.CalledProcessError as e:
+        err = e.stderr or e.stdout
         update.message.reply_text(
-            f"⚠️ 스크립트 실행 오류:\n```\n{e.stderr.strip()}\n```",
-            parse_mode=ParseMode.MARKDOWN
+            f"⚠️ 오류:\n<pre>{err}</pre>",
+            parse_mode=ParseMode.HTML
         )
         return
-
+    output = res.stdout.strip()
     update.message.reply_text(
-        f"```\n{output}\n```",
-        parse_mode=ParseMode.MARKDOWN
+        f"<pre>{output}</pre>",
+        parse_mode=ParseMode.HTML
     )
 
 def main():
