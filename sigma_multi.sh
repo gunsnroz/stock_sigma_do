@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 #
 # Multi‐ticker, multi‐window σ 계산 스크립트
-# Usage:
-#   ./sigma_multi.sh [YYMMDD YYMMDD]
+# Usage: ./sigma_multi.sh [YYMMDD YYMMDD]
 
 # 1) 기간 설정
 if [ "$#" -eq 2 ]; then
@@ -15,7 +14,6 @@ else
   start_date=$(date -d '400 days ago' '+%Y-%m-%d')
 fi
 
-# DEBUG: 확인용
 echo ">>> start_date=${start_date}, end_date=${end_date}" >&2
 
 # 2) Python 계산
@@ -29,8 +27,8 @@ from datetime import datetime, timedelta
 tickers     = ["SOXL","TMF","SCHD","JEPI","JEPQ","QQQ","SPLG","NVDA"]
 all_windows = [10,20,60,90,120,252]
 
-start_date = "$start_date"
-end_date   = "$end_date"
+start_date = "${start_date}"
+end_date   = "${end_date}"
 end_adj    = (datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1)).strftime("%Y-%m-%d")
 
 # 1) 현재 종가
@@ -59,12 +57,13 @@ for t in tickers:
         print(f"{t}: 지정 기간({start_date}~{end_date})에 거래일 부족\n")
         continue
 
-    print(f"{t:<5s} {'현재가':>8s} {'1σ가':>8s} {'2σ가':>8s} {'σ(%)':>8s}")
+    # 헤더 (간격 타이트하게)
+    print(f"{t:<5s} {'현재가':>6s} {'1σ가':>6s} {'2σ가':>6s} {'σ(%)':>6s}")
     for w in windows:
         s   = float(rets.tail(w).std())
         pct = s * 100
         p1  = pc * (1 - s)
         p2  = pc * (1 - 2*s)
-        print(f"{w:6d} {pc:8.2f} {p1:8.2f} {p2:8.2f} {pct:8.2f}%")
+        print(f"{w:4d} {pc:6.2f} {p1:6.2f} {p2:6.2f} {pct:6.2f}%")
     print()
 PYCODE
