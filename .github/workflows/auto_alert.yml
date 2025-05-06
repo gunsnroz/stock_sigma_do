@@ -32,4 +32,4 @@ jobs:
           EMAIL_USER:     ${{ secrets.EMAIL_USER }}
           EMAIL_PASS:     ${{ secrets.EMAIL_PASS }}
           EMAIL_TO:       ${{ secrets.EMAIL_TO }}
-        run: python sigma_buy_checker.py
+        run: python sigma_multi.sh
