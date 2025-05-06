@@ -36,24 +36,28 @@ jobs:
         run: |
           OUTPUT="$(bash ./sigma_multi.sh)"
           PAYLOAD="\`\`\`\n${OUTPUT}\n\`\`\`"
+
+          # Telegram
           curl -s -X POST \
             "https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage" \
             -d chat_id="${TELEGRAM_CHAT_ID}" \
             -d text="${PAYLOAD}" \
             -d parse_mode="Markdown"
+
+          # Email (inline Python)
           cat <<PYCODE | python3
-import os, smtplib
-from email.mime.text import MIMEText
+          import os, smtplib
+          from email.mime.text import MIMEText
 
-text = """${PAYLOAD}"""
-msg = MIMEText(text, _charset='utf-8')
-msg['Subject'] = "매수 단가 알림"
-msg['From']    = os.environ['EMAIL_USER']
-msg['To']      = os.environ['EMAIL_TO']
+          text = """${PAYLOAD}"""
+          msg = MIMEText(text, _charset='utf-8')
+          msg['Subject'] = "매수 단가 알림"
+          msg['From']    = os.environ['EMAIL_USER']
+          msg['To']      = os.environ['EMAIL_TO']
 
-smtp = smtplib.SMTP(os.environ['SMTP_HOST'], int(os.environ['SMTP_PORT']))
-smtp.starttls()
-smtp.login(os.environ['EMAIL_USER'], os.environ['EMAIL_PASS'])
-smtp.send_message(msg)
-smtp.quit()
-PYCODE
+          smtp = smtplib.SMTP(os.environ['SMTP_HOST'], int(os.environ['SMTP_PORT']))
+          smtp.starttls()
+          smtp.login(os.environ['EMAIL_USER'], os.environ['EMAIL_PASS'])
+          smtp.send_message(msg)
+          smtp.quit()
+          PYCODE
