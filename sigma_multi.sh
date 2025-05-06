@@ -58,12 +58,12 @@ for t in tickers:
         continue
 
     # 헤더 (간격 타이트하게)
-    print(f"{t:<5s} {'현재가':>6s} {'1σ가':>6s} {'2σ가':>6s} {'σ(%)':>6s}")
+    print(f"{t:<5s} {'현재가':>5s} {'1σ가':>5s} {'2σ가':>5s} {'σ(%)':>5s}")
     for w in windows:
         s   = float(rets.tail(w).std())
         pct = s * 100
         p1  = pc * (1 - s)
         p2  = pc * (1 - 2*s)
-        print(f"{w:4d} {pc:6.2f} {p1:6.2f} {p2:6.2f} {pct:6.2f}%")
+        print(f"{w:4d} {pc:6.2f} {p1:5.2f} {p2:5.2f} {pct:5.2f}%")
     print()
 PYCODE
