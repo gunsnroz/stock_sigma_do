@@ -33,7 +33,7 @@ start_date = "${start_date}"
 end_date   = "${end_date}"
 end_adj    = (datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1)).strftime("%Y-%m-%d")
 
-# 1) 현재종가 (항상 전일 종가 사용)
+# 1) 항상 전일 종가 사용
 prev_close = {}
 for t in tickers:
     hist = yf.download(t, period="2d", auto_adjust=True, progress=False)["Close"].dropna()
@@ -64,7 +64,11 @@ for t in tickers:
         print(f"{t}: 지정 기간({start_date}~{end_date})에 거래일 부족\n")
         continue
 
+<<<<<<< HEAD
     # 헤더 (간격 타이트하게)
+=======
+    # 헤더
+>>>>>>> 0388da6 (Fix GNU date usage & add SMTP defaults)
     print(f"{t:>4s} {'종가':>3s} {'1σ':>6s} {'2σ':>6s} {'σ(%)':>7s}")
     for w in windows:
         s   = float(rets.tail(w).std())
