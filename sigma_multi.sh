@@ -59,17 +59,17 @@ for t in tickers:
         print(f"{t}: 종가 조회 실패\n")
         continue
 
-    print(f"{t:>4s} {'종가':>6s} {'1σ':>6s} {'2σ':>6s} {'σ(%)':>7s}")
+    print(f"{t:>4s} {'종가':>4s} {'1σ':>6s} {'2σ':>6s} {'σ(%)':>7s}")
     for w in std_windows:
         if len(rets) < w: continue
         s = float(rets.tail(w).std()); pct = s * 100
         p1, p2 = pc*(1-s), pc*(1-2*s)
-        print(f"{w:4d} {pc:7.2f} {p1:7.2f} {p2:7.2f} {pct:7.2f}%")
-
+        print(f"{w:4d} {pc:6.2f} {p1:6.2f} {p2:6.2f} {pct:5.2f}%")
+        
     if custom:
         s = float(rets.std()); pct = s * 100
         p1, p2 = pc*(1-s), pc*(1-2*s)
-        print(f"{'c':>4s} {pc:7.2f} {p1:7.2f} {p2:7.2f} {pct:7.2f}%")
+        print(f"{'c':>4s} {pc:6.2f} {p1:6.2f} {p2:6.2f} {pct:6.2f}%")
 
     print()
 PYCODE
