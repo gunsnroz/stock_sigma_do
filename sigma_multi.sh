@@ -69,7 +69,7 @@ for t in tickers:
     if custom:
         s = float(rets.std()); pct = s * 100
         p1, p2 = pc*(1-s), pc*(1-2*s)
-        print(f"{'c':>4s} {pc:6.2f} {p1:6.2f} {p2:6.2f} {pct:6.2f}%")
+        print(f"{'c':>4s} {pc:6.2f} {p1:6.2f} {p2:6.2f} {pct:5.2f}%")
 
     print()
 PYCODE
