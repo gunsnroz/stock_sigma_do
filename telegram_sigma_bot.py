@@ -20,13 +20,19 @@ def run_script(script_name: str, args: list[str]) -> str:
 
 async def sigma(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = run_script(SCRIPT_MULTI, context.args)
-    await update.message.reply_text(f"<pre>{text}</pre>",
-        parse_mode="HTML", disable_web_page_preview=True)
+    await update.message.reply_text(
+        f"<pre>{text}</pre>",
+        parse_mode="HTML",
+        disable_web_page_preview=True
+    )
 
 async def sigma_do(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = run_script(SCRIPT_DO, context.args)
-    await update.message.reply_text(f"<pre>{text}</pre>",
-        parse_mode="HTML", disable_web_page_preview=True)
+    await update.message.reply_text(
+        f"<pre>{text}</pre>",
+        parse_mode="HTML",
+        disable_web_page_preview=True
+    )
 
 def main():
     token = os.getenv("TELEGRAM_TOKEN")
