@@ -1,0 +1,36 @@
+name: "Daily Sigma-Do Alert"
+
+on:
+  schedule:
+    - cron: '0 11 * * 1-5'
+  workflow_dispatch:
+
+jobs:
+  run-sigma-do:
+    runs-on: ubuntu-latest
+    env:
+      TZ: Asia/Seoul
+      TELEGRAM_TOKEN: ${{ secrets.SIGMADO_TELEGRAM_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.SIGMADO_CHAT_ID }}
+      EMAIL_USER:     ${{ secrets.SIGMADO_EMAIL_USER }}
+      EMAIL_PASS:     ${{ secrets.SIGMADO_EMAIL_PASS }}
+      SMTP_HOST:      ${{ secrets.SIGMADO_SMTP_HOST }}
+      SMTP_PORT:      ${{ secrets.SIGMADO_SMTP_PORT }}
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Run sigma_do.sh and send alerts
+        shell: bash
+        run: |
+          OUTPUT=""
+          PAYLOAD="```\n\n```"
+          # Telegram
+          curl -X POST "https://api.telegram.org/bot7335635442:AAHPdFASBJKFRkaWrOyQ-08E_iFzIBBk8I8/sendMessage"             -d chat_id="7585700210"             -d text=""             -d parse_mode="Markdown"
+          # Email
+          python3 send_alert.py ""
