@@ -2,6 +2,7 @@
 import os
 import subprocess
 import html
+from io import BytesIO
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 
@@ -25,27 +26,29 @@ def run_script(script_name: str, args: list[str]) -> str:
 
 async def sigma(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
-    /sigma command: runs the multi-sigma checker and returns formatted output.
+    /sigma command: runs the multi-sigma checker and sends the raw output as a .txt file to avoid wrapping.
     """
     text = run_script(SCRIPT_MULTI, context.args)
-    safe = html.escape(text)
-    # Use HTML <pre> block to preserve long lines without wrapping
-    await update.message.reply_text(
-        f"<pre>{safe}</pre>",
-        parse_mode="HTML",
-        disable_web_page_preview=True,
+    buffer = BytesIO(text.encode('utf-8'))
+    buffer.name = "sigma_multi.txt"
+    # Send as document to preserve all lines without wrapping
+    await update.message.reply_document(
+        document=buffer,
+        filename=buffer.name,
+        caption="📄 Here is your sigma report:",
     )
 
 async def sigma_do(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
-    /sigma_do command: runs the one-shot sigma_do script and returns formatted output.
+    /sigma_do command: runs the one-shot sigma_do script and sends the raw output as a .txt file.
     """
     output = run_script(SCRIPT_DO, context.args)
-    safe = html.escape(output)
-    await update.message.reply_text(
-        f"<pre>{safe}</pre>",
-        parse_mode="HTML",
-        disable_web_page_preview=True,
+    buffer = BytesIO(output.encode('utf-8'))
+    buffer.name = "sigma_do.txt"
+    await update.message.reply_document(
+        document=buffer,
+        filename=buffer.name,
+        caption="📄 Here is your sigma_do output:",
     )
 
 def main():
